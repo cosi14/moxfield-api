@@ -117,10 +117,10 @@ class Moxfield:
         return self._get(f"/v3/decks/all/{public_id}")
 
 
-def deck_cards_typed(deck: dict, board: str = "mainboard") -> list[tuple[int, str, bool]]:
-    """Como deck_cards pero con (cantidad, nombre, es_tierra) de un tablero."""
+def deck_cards_typed(deck: dict, board: str = "mainboard") -> list[tuple[int, str, bool, str]]:
+    """Como deck_cards pero con (cantidad, nombre, es_tierra, scryfall_id) de un tablero."""
     return [
-        (e["quantity"], e["card"]["name"], "Land" in e["card"].get("type_line", ""))
+        (e["quantity"], e["card"]["name"], "Land" in e["card"].get("type_line", ""), e["card"].get("scryfall_id", ""))
         for e in deck["boards"].get(board, {}).get("cards", {}).values()
     ]
 
