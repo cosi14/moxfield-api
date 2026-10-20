@@ -37,3 +37,9 @@ Filtros por comandante: `min_bracket`, `max_bracket`, `hub`, `name`, `author`. `
 - `MoxfieldDecks.apk`: WebView que abre la URL de tu servidor (se pide al abrir; menú ⋮ -> Cambiar servidor). Compilar: `cd android; .\gradlew.bat assembleDebug` (JDK 11, Android SDK 33).
 - Servidor en PC: `py -m uvicorn api:app --host 0.0.0.0` y URL `http://<IP-del-PC>:8000` (abre el puerto 8000 en el firewall).
 - Nube: el `Dockerfile` sirve para Render/Railway/Fly. Cloudflare puede bloquear IPs de datacenter; si da 403/502, usa el PC.
+
+## Seguridad
+
+- Variable de entorno `ACCESS_KEY` (ponla en Render): si existe, `/api/*` exige la cabecera `X-Access-Key`. El front pide la clave una vez y la guarda en el navegador/WebView. Sin `ACCESS_KEY` la API queda abierta (uso local).
+- Límite de 200 peticiones/min por IP, caché con tope, validación de ids/usuarios, `/docs` desactivado y contenedor sin root.
+- No subas la clave al repositorio.

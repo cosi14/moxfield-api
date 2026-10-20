@@ -132,7 +132,7 @@
 <script>
 const $ = id => document.getElementById(id);
 /* Imagen de Scryfall a partir del scryfall_id (sin llamadas a su API) */
-const sfImg = (id, size = 'small') => id ? `https://cards.scryfall.io/${size}/front/${id[0]}/${id[1]}/${id}.jpg` : '';
+const sfImg = (id, size = 'small') => /^[0-9a-f-]{36}$/i.test(id || '') ?`https://cards.scryfall.io/${size}/front/${id[0]}/${id[1]}/${id}.jpg` : '';
 /* Vista previa grande al pasar el ratón sobre cualquier elemento [data-sf] */
 document.addEventListener('mouseover', e => {
   const el = e.target.closest('[data-sf]'), pv = $('pv');
@@ -148,8 +148,30 @@ const store = { get: k => { try { return localStorage.getItem(k) || ''; } catch 
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 let tab = 'cmd', cmd = null, page = 1, totalPages = 1, timer;
 
-async function api(url) {
-  const r = await fetch(url);
+/* Clave de acceso: se guarda en el navegador y se manda en X-Access-Key (prompt() no funciona en el WebView) */
+let keyAsk = null;
+function askKey(msg) {
+  if (keyAsk) return keyAsk;  // varias peticiones a la vez comparten un solo cuadro
+  keyAsk = new Promise(res => {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px';
+    box.innerHTML = `<form style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(360px,100%)">
+      <div style="font-weight:600;margin-bottom:6px">Clave de acceso</div>
+      <div style="color:var(--mut);font-size:.85rem;margin-bottom:10px">${esc(msg)}</div>
+      <input type="password" autocomplete="off" style="width:100%;margin-bottom:10px"><button style="width:100%">Entrar</button></form>`;
+    document.body.appendChild(box);
+    const inp = box.querySelector('input'); inp.focus();
+    box.querySelector('form').onsubmit = e => { e.preventDefault(); box.remove(); keyAsk = null; res(inp.value.trim()); };
+  });
+  return keyAsk;
+}
+async function api(url, retry = true) {
+  const key = store.get('mox_key');
+  const r = await fetch(url, { headers: key ? { 'X-Access-Key': key } : {} });
+  if (r.status === 401 && retry) {
+    const k = await askKey(key ? 'La clave guardada no es válida.' : 'Este servidor está protegido. Introduce la clave.');
+    store.set('mox_key', k); return api(url, false);
+  }
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
   return r.json();
 }
@@ -250,9 +272,9 @@ function renderCom() {
   $('com-out').innerHTML =
     `<div class="meta" style="margin:6px 0">${esc(comData.cmd)} — ${N} mazos analizados · ${list.length} cartas${list.length > 200 ? ' (mostrando 200)' : ''}</div>` +
     ($('cView').value === 'gal'
-      ? `<div class="gal">${shown.map(c => `<div class="gcard" data-sf="${c.sf}"><img loading="lazy" src="${sfImg(c.sf)}" alt="${esc(c.n)}">` +
+      ? `<div class="gal">${shown.map(c => `<div class="gcard" data-sf="${esc(c.sf)}"><img loading="lazy" src="${sfImg(c.sf)}" alt="${esc(c.n)}">` +
           `<span class="badge">${c.c}/${N}</span><button data-hide="${esc(c.n)}" title="Ocultar esta carta">✕</button><div class="nm2">${esc(c.n)} · ${Math.round(100 * c.c / N)}%</div></div>`).join('')}</div>`
-      : `<div>${shown.map(c => `<div class="crow"><span class="nm" title="${esc(c.n)}" data-sf="${c.sf}"><img loading="lazy" src="${sfImg(c.sf)}" alt="">${esc(c.n)}</span><span class="ct">${c.c}/${N} · ${Math.round(100 * c.c / N)}%</span>` +
+      : `<div>${shown.map(c => `<div class="crow"><span class="nm" title="${esc(c.n)}" data-sf="${esc(c.sf)}"><img loading="lazy" src="${sfImg(c.sf)}" alt="">${esc(c.n)}</span><span class="ct">${c.c}/${N} · ${Math.round(100 * c.c / N)}%</span>` +
           `<button data-hide="${esc(c.n)}" title="Ocultar esta carta">✕</button><div class="bar2"><i style="width:${100 * c.c / N}%"></i></div></div>`).join('')}</div>`);
 }
 
@@ -302,11 +324,11 @@ async function load() {
     const n = d.totalResults >= 10000 ? '10000+' : d.totalResults;
     $('status').textContent = d.decks.length ? `${what} — ${n} mazos` : 'Sin resultados con estos filtros.';
     $('decks').innerHTML = d.decks.map(k => `
-      <div class="deck" data-id="${k.id}">
+      <div class="deck" data-id="${esc(k.id)}">
         <div class="row">
           <div><div class="name">${esc(k.name)}</div>
             <div class="meta">${tab === 'me' ? esc(k.format) + (k.commanders.length ? ' · ' + esc(k.commanders.join(' / ')) : '') : esc(k.author)} · ${k.views.toLocaleString()} vistas · ${k.likes} likes${k.bracket ? ' · bracket ' + k.bracket : ''} · ${k.updated}</div></div>
-          <div class="acts"><button data-act="cards">Cartas</button><button data-act="copy">Copiar</button><a href="${esc(k.url)}" target="_blank" rel="noopener">Moxfield ↗</a></div>
+          <div class="acts"><button data-act="cards">Cartas</button><button data-act="copy">Copiar</button><a href="${esc(/^https:\/\/(www\.)?moxfield\.com\//.test(k.url) ? k.url : '#')}" target="_blank" rel="noopener">Moxfield ↗</a></div>
         </div>
         <div class="list"></div>
       </div>`).join('');
@@ -334,13 +356,13 @@ $('decks').addEventListener('click', async e => {
       if (list.style.display === 'block') { list.style.display = 'none'; return; }
       b.textContent = '…'; const c = await cards(deck);
       list.innerHTML = `<h4>${c.commanders.map(x => esc(x[1])).join(' / ')} · ${c.mainboard.reduce((s, x) => s + x[0], 0) + c.commanders.length} cartas</h4>` +
-        c.mainboard.map(([q, n, , sf]) => `<span data-sf="${sf}">${q} ${esc(n)}</span>`).join('\n');
+        c.mainboard.map(([q, n, , sf]) => `<span data-sf="${esc(sf)}">${q} ${esc(n)}</span>`).join('\n');
       list.style.display = 'block';
     } else {
       b.textContent = '…'; await copy(asText(await cards(deck))); b.textContent = '¡Copiado!';
       return setTimeout(() => b.textContent = old, 1500);
     }
-  } catch (err) { alert('Error: ' + err.message); }
+  } catch (err) { $('status').textContent = 'Error: ' + err.message; }
   b.textContent = old;
 });
 </script>
