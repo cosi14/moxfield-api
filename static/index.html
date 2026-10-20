@@ -21,9 +21,17 @@
   .grow { flex:1 1 260px; } .sm { width:130px; }
   button { cursor:pointer; } button:hover:not(:disabled) { border-color:var(--acc); } button:disabled { opacity:.4; cursor:default; }
   label { color:var(--mut); font-size:.85rem; display:flex; align-items:center; gap:6px; }
-  #sug { position:absolute; top:44px; left:0; width:min(420px,100%); background:var(--card); border:1px solid var(--line); border-radius:8px; z-index:5; display:none; overflow:hidden; }
-  #sug div { padding:8px 12px; cursor:pointer; } #sug div:hover { background:var(--bg); }
-  #sug small { color:var(--mut); display:block; }
+  .sug { position:absolute; top:44px; left:0; width:min(420px,100%); background:var(--card); border:1px solid var(--line); border-radius:8px; z-index:5; display:none; overflow:hidden; }
+  .sug div { padding:8px 12px; cursor:pointer; } .sug div:hover { background:var(--bg); }
+  .sug small { color:var(--mut); display:block; }
+  .crow { display:grid; grid-template-columns:minmax(0,1fr) 110px 28px; gap:10px; align-items:center; padding:6px 12px; border-bottom:1px solid var(--line); background:var(--card); }
+  .crow:first-child { border-radius:10px 10px 0 0; } .crow:last-child { border:0; border-radius:0 0 10px 10px; }
+  .crow .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .crow .ct { color:var(--mut); font-size:.85rem; text-align:right; }
+  .crow .bar2 { grid-column:1 / -1; height:4px; background:var(--line); border-radius:2px; margin-top:-2px; }
+  .crow .bar2 i { display:block; height:100%; background:var(--acc); border-radius:2px; }
+  .crow button { padding:0; width:24px; height:24px; line-height:1; border-radius:6px; color:var(--mut); }
+  .chk { color:var(--fg); }
   #status { color:var(--mut); margin:14px 0; min-height:1.4em; }
   .deck { background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; }
   .row { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:12px 14px; align-items:center; }
@@ -39,12 +47,12 @@
 <body>
 <main>
   <h1>Mazos de Moxfield</h1>
-  <div class="tabs"><button data-tab="cmd" class="on">Por comandante</button><button data-tab="me">Mis mazos</button></div>
+  <div class="tabs"><button data-tab="cmd" class="on">Por comandante</button><button data-tab="me">Mis mazos</button><button data-tab="com">Cartas comunes</button></div>
 
   <div id="p-cmd">
     <div class="bar">
       <input id="q" class="grow" placeholder="Escribe un comandante (en inglés)…" autocomplete="off">
-      <div id="sug"></div>
+      <div id="sug" class="sug"></div>
       <select id="sort">
         <option value="views">Más vistos</option><option value="likes">Más likes</option>
         <option value="updated">Actualizados</option><option value="created">Recientes</option>
@@ -78,9 +86,36 @@
     <div class="meta" style="color:var(--mut);font-size:.85rem">Solo mazos públicos (los privados requieren sesión en Moxfield).</div>
   </div>
 
+  <div id="p-com" class="hide">
+    <div class="bar">
+      <input id="cq" class="grow" placeholder="Comandante (en inglés)…" autocomplete="off">
+      <div id="csug" class="sug"></div>
+      <select id="cn"><option>10</option><option selected>20</option><option>30</option><option>50</option><option>64</option></select>
+      <select id="csort"><option value="views">Más vistos</option><option value="likes">Más likes</option><option value="updated">Actualizados</option><option value="created">Recientes</option></select>
+      <label>Bracket
+        <select id="cminB"><option value="">mín</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+        <select id="cmaxB"><option value="">máx</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+      </label>
+      <button id="cgo">Analizar</button>
+    </div>
+    <div class="bar">
+      <label class="chk"><input type="checkbox" id="fStaples" checked> Ocultar staples</label>
+      <label class="chk"><input type="checkbox" id="fBasic" checked> Ocultar tierras básicas</label>
+      <label class="chk"><input type="checkbox" id="fLands"> Ocultar todas las tierras</label>
+      <label>Presencia mín.
+        <select id="fMin"><option value="0">cualquiera</option><option value="10">10%</option><option value="25" selected>25%</option><option value="50">50%</option><option value="75">75%</option></select>
+      </label>
+      <input id="fText" class="sm" placeholder="Filtrar nombre…">
+      <button id="cCopy">Copiar lista</button>
+      <button id="cReset" title="Vuelve a mostrar las cartas ocultas con ✕">Restablecer ocultas</button>
+    </div>
+    <div class="meta" style="color:var(--mut);font-size:.85rem">Pulsa ✕ en una carta para ocultarla (se recuerda). «Staples» = lista fija de cartas genéricas de Commander (<a href="/static/staples.json" target="_blank">ver</a>).</div>
+  </div>
+
   <div id="status">Busca un comandante para empezar.</div>
+  <div id="com-out" class="hide"></div>
   <div id="decks"></div>
-  <div class="pager"><button id="prev" disabled>← Anterior</button><span id="pg"></span><button id="next" disabled>Siguiente →</button></div>
+  <div class="pager" id="pager"><button id="prev" disabled>← Anterior</button><span id="pg"></span><button id="next" disabled>Siguiente →</button></div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -101,30 +136,111 @@ document.querySelector('.tabs').onclick = e => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   tab = b.dataset.tab; page = 1;
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  $('p-cmd').classList.toggle('hide', tab !== 'cmd'); $('p-me').classList.toggle('hide', tab !== 'me');
+  for (const t of ['cmd', 'me', 'com']) $('p-' + t).classList.toggle('hide', tab !== t);
+  $('com-out').classList.toggle('hide', tab !== 'com'); $('pager').classList.toggle('hide', tab === 'com');
   $('decks').innerHTML = ''; $('prev').disabled = $('next').disabled = true; $('pg').textContent = '';
   if (tab === 'me' && $('user').value) load();
-  else $('status').textContent = tab === 'me' ? 'Introduce tu usuario de Moxfield.' : 'Busca un comandante para empezar.';
+  else $('status').textContent = { me: 'Introduce tu usuario de Moxfield.', cmd: 'Busca un comandante para empezar.',
+                                   com: comData ? '' : 'Elige un comandante y pulsa Analizar.' }[tab];
+  if (tab === 'com' && comData) renderCom();
 };
 
-/* ---- autocompletado de comandante ---- */
-$('q').addEventListener('input', () => {
-  clearTimeout(timer);
-  const v = $('q').value.trim();
-  if (v.length < 2) { $('sug').style.display = 'none'; return; }
-  timer = setTimeout(async () => {
-    try {
-      const list = await api('/api/commanders?q=' + encodeURIComponent(v));
-      $('sug').innerHTML = list.map((c, i) => `<div data-i="${i}">${esc(c.name)}<small>${esc(c.type_line)}</small></div>`).join('');
-      $('sug').style.display = list.length ? 'block' : 'none';
-      $('sug').onclick = e => {
-        const d = e.target.closest('div[data-i]'); if (!d) return;
-        cmd = list[d.dataset.i]; $('q').value = cmd.name; $('sug').style.display = 'none'; page = 1; load();
-      };
-    } catch (e) { $('status').textContent = 'Error: ' + e.message; }
-  }, 300);
+/* ---- autocompletado de comandante (reutilizable) ---- */
+function suggest(input, box, pick) {
+  let t;
+  input.addEventListener('input', () => {
+    clearTimeout(t);
+    const v = input.value.trim();
+    if (v.length < 2) { box.style.display = 'none'; return; }
+    t = setTimeout(async () => {
+      try {
+        const list = await api('/api/commanders?q=' + encodeURIComponent(v));
+        box.innerHTML = list.map((c, i) => `<div data-i="${i}">${esc(c.name)}<small>${esc(c.type_line)}</small></div>`).join('');
+        box.style.display = list.length ? 'block' : 'none';
+        box.onclick = e => {
+          const d = e.target.closest('div[data-i]'); if (!d) return;
+          const c = list[d.dataset.i]; input.value = c.name; box.style.display = 'none'; pick(c);
+        };
+      } catch (e) { $('status').textContent = 'Error: ' + e.message; }
+    }, 300);
+  });
+}
+suggest($('q'), $('sug'), c => { cmd = c; page = 1; load(); });
+suggest($('cq'), $('csug'), c => { ccmd = c; });
+document.addEventListener('click', e => { if (!e.target.closest('.bar')) document.querySelectorAll('.sug').forEach(s => s.style.display = 'none'); });
+
+/* ---- cartas comunes ---- */
+let ccmd = null, comData = null, runId = 0, staples = null;
+const BASIC = /^(Snow-Covered )?(Plains|Island|Swamp|Mountain|Forest)$|^Wastes$/;
+const hidden = new Set(JSON.parse(store.get('mox_hidden') || '[]'));
+fetch('/static/staples.json').then(r => r.json()).then(j => {
+  staples = { set: new Set(j.cards.map(s => s.toLowerCase())), pats: j.patterns.map(p => new RegExp(p, 'i')) };
+  if (comData) renderCom();
 });
-document.addEventListener('click', e => { if (!e.target.closest('.bar')) $('sug').style.display = 'none'; });
+const isStaple = n => staples && (staples.set.has(n.toLowerCase()) || staples.pats.some(p => p.test(n)));
+
+async function analyze() {
+  if (!ccmd) { $('status').textContent = 'Elige un comandante de la lista de sugerencias.'; return; }
+  const me = ++runId; comData = null; $('com-out').innerHTML = '';
+  $('status').textContent = 'Buscando mazos…';
+  try {
+    const d = await api('/api/decks?' + qs({ commander_id: ccmd.id, sort: $('csort').value, page_size: $('cn').value,
+                                              min_bracket: $('cminB').value, max_bracket: $('cmaxB').value }));
+    const counts = new Map(); let done = 0, failed = 0;
+    comData = { cmd: ccmd.name, total: d.decks.length, done: 0, cards: [] };
+    for (const k of d.decks) {
+      if (me !== runId) return;
+      try {
+        const c = await api(`/api/decks/${k.id}/cards`);
+        const seen = new Set();
+        for (const [, n, land] of c.mainboard) {
+          if (seen.has(n)) continue; seen.add(n);
+          const e = counts.get(n) || { n, c: 0, land }; e.c++; counts.set(n, e);
+        }
+        done++;
+      } catch { failed++; }
+      comData.done = done; comData.cards = [...counts.values()];
+      $('status').textContent = `Analizando ${done + failed}/${d.decks.length}…${failed ? ` (${failed} fallidos)` : ''}`;
+      if ((done + failed) % 3 === 0 || done + failed === d.decks.length) renderCom();
+    }
+    if (me === runId) { renderCom(); $('status').textContent = done ? '' : 'No se pudo analizar ningún mazo.'; }
+  } catch (e) { $('status').textContent = 'Error: ' + e.message; }
+}
+
+function visibleCards() {
+  if (!comData) return [];
+  const min = +$('fMin').value / 100 * comData.done, txt = $('fText').value.trim().toLowerCase();
+  return comData.cards.filter(c =>
+    c.c >= Math.max(min, 1) && !hidden.has(c.n) &&
+    !($('fStaples').checked && isStaple(c.n)) &&
+    !($('fBasic').checked && BASIC.test(c.n)) &&
+    !($('fLands').checked && c.land) &&
+    (!txt || c.n.toLowerCase().includes(txt))
+  ).sort((a, b) => b.c - a.c || a.n.localeCompare(b.n));
+}
+
+function renderCom() {
+  if (!comData || !comData.done) { $('com-out').innerHTML = ''; return; }
+  const list = visibleCards(), shown = list.slice(0, 200), N = comData.done;
+  $('com-out').innerHTML =
+    `<div class="meta" style="margin:6px 0">${esc(comData.cmd)} — ${N} mazos analizados · ${list.length} cartas${list.length > 200 ? ' (mostrando 200)' : ''}</div>` +
+    `<div>${shown.map(c => `<div class="crow"><span class="nm" title="${esc(c.n)}">${esc(c.n)}</span><span class="ct">${c.c}/${N} · ${Math.round(100 * c.c / N)}%</span>` +
+      `<button data-hide="${esc(c.n)}" title="Ocultar esta carta">✕</button><div class="bar2"><i style="width:${100 * c.c / N}%"></i></div></div>`).join('')}</div>`;
+}
+
+$('cgo').onclick = analyze;
+for (const id of ['fStaples', 'fBasic', 'fLands', 'fMin']) $(id).onchange = renderCom;
+$('fText').addEventListener('input', renderCom);
+$('cReset').onclick = () => { hidden.clear(); store.set('mox_hidden', '[]'); renderCom(); };
+$('cCopy').onclick = async () => {
+  const b = $('cCopy'), old = b.textContent;
+  try { await copy(visibleCards().map(c => '1 ' + c.n).join('\n')); b.textContent = '¡Copiado!'; } catch { b.textContent = 'Error'; }
+  setTimeout(() => b.textContent = old, 1500);
+};
+$('com-out').addEventListener('click', e => {
+  const b = e.target.closest('button[data-hide]'); if (!b) return;
+  hidden.add(b.dataset.hide); store.set('mox_hidden', JSON.stringify([...hidden])); renderCom();
+});
 
 /* ---- filtros ---- */
 for (const id of ['sort', 'minB', 'maxB']) $(id).onchange = () => { if (cmd) { page = 1; load(); } };

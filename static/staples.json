@@ -1,0 +1,23 @@
+{
+  "patterns": ["^Talisman of ", " Signet$"],
+  "cards": [
+    "Sol Ring", "Arcane Signet", "Command Tower", "Mana Crypt", "Mana Vault", "Chrome Mox", "Mox Diamond", "Mox Amber",
+    "Jeweled Lotus", "Lotus Petal", "Lion's Eye Diamond", "Fellwar Stone", "Mind Stone", "Thought Vessel", "Commander's Sphere",
+    "Wayfarer's Bauble", "Everflowing Chalice", "Grim Monolith", "Basalt Monolith", "Ancient Tomb", "City of Brass", "Mana Confluence",
+    "Gemstone Caverns", "Exotic Orchard", "Path of Ancestry", "Reliquary Tower", "Fabled Passage", "Evolving Wilds", "Terramorphic Expanse",
+    "Myriad Landscape", "Command Beacon", "War Room", "Rogue's Passage", "Bojuka Bog", "Arid Mesa", "Scalding Tarn", "Misty Rainforest",
+    "Verdant Catacombs", "Marsh Flats", "Bloodstained Mire", "Windswept Heath", "Wooded Foothills", "Flooded Strand", "Polluted Delta",
+    "Swords to Plowshares", "Path to Exile", "Counterspell", "Cyclonic Rift", "Rhystic Study", "Mystic Remora", "Smothering Tithe",
+    "Esper Sentinel", "Dockside Extortionist", "Demonic Tutor", "Vampiric Tutor", "Mystical Tutor", "Enlightened Tutor", "Worldly Tutor",
+    "Imperial Seal", "Swiftfoot Boots", "Lightning Greaves", "Sensei's Divining Top", "Skullclamp", "Heroic Intervention", "Teferi's Protection",
+    "Farewell", "Wrath of God", "Damnation", "Toxic Deluge", "Blasphemous Act", "Beast Within", "Chaos Warp", "Generous Gift", "Nature's Claim",
+    "Return to Nature", "Austere Command", "Cultivate", "Kodama's Reach", "Rampant Growth", "Farseek", "Nature's Lore", "Three Visits",
+    "Skyshroud Claim", "Birds of Paradise", "Llanowar Elves", "Elvish Mystic", "Fyndhorn Elves", "Noxious Revival", "Fierce Guardianship",
+    "Force of Will", "Mana Drain", "Swan Song", "Negate", "Arcane Denial", "An Offer You Can't Refuse", "Pongify", "Rapid Hybridization",
+    "Vandalblast", "Anguished Unmaking", "Vindicate", "Assassin's Trophy", "Abrupt Decay", "Despark", "Deadly Rollick", "Go for the Throat",
+    "Infernal Grasp", "Feed the Swarm", "Sheoldred's Edict", "Dark Ritual", "Cabal Ritual", "Diabolic Intent", "Final Fortune", "Sylvan Library",
+    "Eternal Witness", "Rhystic Study", "Mother of Runes", "Opposition Agent", "Ad Nauseam", "Spell Pierce", "Silence", "Grand Abolisher",
+    "Orcish Bowmasters", "Ponder", "Brainstorm", "Preordain", "Windfall", "Wheel of Fortune", "Reliquary Tower", "Cursed Totem",
+    "Lightning Bolt", "Chain Lightning", "Fire Covenant", "Deflecting Swat", "Red Elemental Blast", "Pyroblast", "Gamble", "Dualcaster Mage"
+  ]
+}

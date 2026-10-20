@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from moxfield import SORTS, Moxfield, MoxfieldError, deck_cards
+from moxfield import SORTS, Moxfield, MoxfieldError, deck_cards, deck_cards_typed
 
 app = FastAPI(title="Moxfield por comandante")
 mox = Moxfield(delay=0.7)
@@ -106,7 +106,7 @@ def deck_list(public_id: str):
         return {
             "name": deck["name"],
             "commanders": [(q, n) for q, n in deck_cards(deck, ("commanders",))],
-            "mainboard": sorted(deck_cards(deck, ("mainboard",)), key=lambda c: c[1]),
+            "mainboard": sorted(deck_cards_typed(deck), key=lambda c: c[1]),  # [cantidad, nombre, es_tierra]
         }
 
     return cached(("l", public_id), load)

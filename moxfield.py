@@ -117,6 +117,14 @@ class Moxfield:
         return self._get(f"/v3/decks/all/{public_id}")
 
 
+def deck_cards_typed(deck: dict, board: str = "mainboard") -> list[tuple[int, str, bool]]:
+    """Como deck_cards pero con (cantidad, nombre, es_tierra) de un tablero."""
+    return [
+        (e["quantity"], e["card"]["name"], "Land" in e["card"].get("type_line", ""))
+        for e in deck["boards"].get(board, {}).get("cards", {}).values()
+    ]
+
+
 def deck_cards(deck: dict, boards=("commanders", "mainboard")) -> list[tuple[int, str]]:
     """Lista (cantidad, nombre) de los tableros pedidos."""
     out = []
