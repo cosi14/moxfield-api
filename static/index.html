@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mazos por comandante</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#1b1f24; --card:#fff; --mut:#6b7280; --line:#e3e6ea; --acc:#4f46e5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14161a; --fg:#e6e8eb; --card:#1d2026; --mut:#9aa1ab; --line:#2c3038; --acc:#8b86ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui,sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.4rem; margin:0 0 16px; }
+  .tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line); }
+  .tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; background:none; padding:8px 14px; color:var(--mut); }
+  .tabs button.on { color:var(--fg); border-bottom-color:var(--acc); font-weight:600; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; position:relative; margin-bottom:8px; }
+  input, select, button { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:9px 12px; }
+  .grow { flex:1 1 260px; } .sm { width:130px; }
+  button { cursor:pointer; } button:hover:not(:disabled) { border-color:var(--acc); } button:disabled { opacity:.4; cursor:default; }
+  label { color:var(--mut); font-size:.85rem; display:flex; align-items:center; gap:6px; }
+  #sug { position:absolute; top:44px; left:0; width:min(420px,100%); background:var(--card); border:1px solid var(--line); border-radius:8px; z-index:5; display:none; overflow:hidden; }
+  #sug div { padding:8px 12px; cursor:pointer; } #sug div:hover { background:var(--bg); }
+  #sug small { color:var(--mut); display:block; }
+  #status { color:var(--mut); margin:14px 0; min-height:1.4em; }
+  .deck { background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; }
+  .row { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:12px 14px; align-items:center; }
+  .name { font-weight:600; } .meta { color:var(--mut); font-size:.88rem; }
+  .acts { display:flex; gap:6px; } .acts button, .acts a { font-size:.85rem; padding:5px 10px; border:1px solid var(--line); border-radius:6px; color:inherit; text-decoration:none; background:var(--card); }
+  .list { display:none; border-top:1px solid var(--line); padding:12px 14px; columns:3 180px; font-size:.88rem; white-space:pre-line; }
+  .list h4 { margin:0 0 4px; column-span:all; font-size:.85rem; color:var(--mut); }
+  .pager { display:flex; gap:12px; align-items:center; justify-content:center; margin-top:16px; }
+  .hide { display:none !important; }
+  @media (max-width:560px) { .row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mazos de Moxfield</h1>
+  <div class="tabs"><button data-tab="cmd" class="on">Por comandante</button><button data-tab="me">Mis mazos</button></div>
+
+  <div id="p-cmd">
+    <div class="bar">
+      <input id="q" class="grow" placeholder="Escribe un comandante (en inglés)…" autocomplete="off">
+      <div id="sug"></div>
+      <select id="sort">
+        <option value="views">Más vistos</option><option value="likes">Más likes</option>
+        <option value="updated">Actualizados</option><option value="created">Recientes</option>
+        <option value="bookmarks">Guardados</option><option value="comments">Comentados</option>
+      </select>
+    </div>
+    <div class="bar">
+      <label>Bracket
+        <select id="minB"><option value="">mín</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+        <select id="maxB"><option value="">máx</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+      </label>
+      <input id="hub" class="sm" placeholder="Hub (p. ej. cEDH)">
+      <input id="name" class="sm" placeholder="Nombre contiene…">
+      <input id="author" class="sm" placeholder="Autor">
+      <button id="clear">Limpiar</button>
+    </div>
+  </div>
+
+  <div id="p-me" class="hide">
+    <div class="bar">
+      <input id="user" class="grow" placeholder="Tu usuario de Moxfield">
+      <select id="fmt">
+        <option value="">Todos los formatos</option><option value="commander">Commander</option>
+        <option value="standard">Standard</option><option value="modern">Modern</option><option value="pioneer">Pioneer</option>
+        <option value="legacy">Legacy</option><option value="pauper">Pauper</option><option value="brawl">Brawl</option>
+      </select>
+      <select id="usort"><option value="updated">Actualizados</option><option value="created">Recientes</option><option value="views">Más vistos</option><option value="likes">Más likes</option></select>
+      <input id="uname" class="sm" placeholder="Nombre contiene…">
+      <button id="go">Ver</button>
+    </div>
+    <div class="meta" style="color:var(--mut);font-size:.85rem">Solo mazos públicos (los privados requieren sesión en Moxfield).</div>
+  </div>
+
+  <div id="status">Busca un comandante para empezar.</div>
+  <div id="decks"></div>
+  <div class="pager"><button id="prev" disabled>← Anterior</button><span id="pg"></span><button id="next" disabled>Siguiente →</button></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const store = { get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+let tab = 'cmd', cmd = null, page = 1, totalPages = 1, timer;
+
+async function api(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status);
+  return r.json();
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const qs = o => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== '' && v != null)).toString();
+
+/* ---- pestañas ---- */
+document.querySelector('.tabs').onclick = e => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  tab = b.dataset.tab; page = 1;
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('p-cmd').classList.toggle('hide', tab !== 'cmd'); $('p-me').classList.toggle('hide', tab !== 'me');
+  $('decks').innerHTML = ''; $('prev').disabled = $('next').disabled = true; $('pg').textContent = '';
+  if (tab === 'me' && $('user').value) load();
+  else $('status').textContent = tab === 'me' ? 'Introduce tu usuario de Moxfield.' : 'Busca un comandante para empezar.';
+};
+
+/* ---- autocompletado de comandante ---- */
+$('q').addEventListener('input', () => {
+  clearTimeout(timer);
+  const v = $('q').value.trim();
+  if (v.length < 2) { $('sug').style.display = 'none'; return; }
+  timer = setTimeout(async () => {
+    try {
+      const list = await api('/api/commanders?q=' + encodeURIComponent(v));
+      $('sug').innerHTML = list.map((c, i) => `<div data-i="${i}">${esc(c.name)}<small>${esc(c.type_line)}</small></div>`).join('');
+      $('sug').style.display = list.length ? 'block' : 'none';
+      $('sug').onclick = e => {
+        const d = e.target.closest('div[data-i]'); if (!d) return;
+        cmd = list[d.dataset.i]; $('q').value = cmd.name; $('sug').style.display = 'none'; page = 1; load();
+      };
+    } catch (e) { $('status').textContent = 'Error: ' + e.message; }
+  }, 300);
+});
+document.addEventListener('click', e => { if (!e.target.closest('.bar')) $('sug').style.display = 'none'; });
+
+/* ---- filtros ---- */
+for (const id of ['sort', 'minB', 'maxB']) $(id).onchange = () => { if (cmd) { page = 1; load(); } };
+for (const id of ['hub', 'name', 'author'])
+  $(id).addEventListener('input', () => { if (!cmd) return; clearTimeout(timer); timer = setTimeout(() => { page = 1; load(); }, 600); });
+$('clear').onclick = () => { for (const id of ['minB', 'maxB', 'hub', 'name', 'author']) $(id).value = ''; if (cmd) { page = 1; load(); } };
+
+$('user').value = store.get('mox_user');
+$('go').onclick = () => { store.set('mox_user', $('user').value.trim()); page = 1; load(); };
+$('user').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+for (const id of ['fmt', 'usort']) $(id).onchange = () => { if ($('user').value) { page = 1; load(); } };
+$('uname').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { if ($('user').value) { page = 1; load(); } }, 600); });
+
+$('prev').onclick = () => { page--; load(); };
+$('next').onclick = () => { page++; load(); };
+
+/* ---- carga y render ---- */
+function url() {
+  if (tab === 'me')
+    return '/api/my-decks?' + qs({ username: $('user').value.trim(), sort: $('usort').value, fmt: $('fmt').value, name: $('uname').value.trim(), page });
+  return '/api/decks?' + qs({ commander_id: cmd.id, sort: $('sort').value, page, min_bracket: $('minB').value, max_bracket: $('maxB').value,
+                              hub: $('hub').value.trim(), name: $('name').value.trim(), author: $('author').value.trim() });
+}
+
+async function load() {
+  $('status').textContent = 'Cargando…'; $('decks').innerHTML = '';
+  try {
+    const d = await api(url());
+    totalPages = d.totalPages;
+    const what = tab === 'me' ? $('user').value.trim() : cmd.name;
+    const n = d.totalResults >= 10000 ? '10000+' : d.totalResults;
+    $('status').textContent = d.decks.length ? `${what} — ${n} mazos` : 'Sin resultados con estos filtros.';
+    $('decks').innerHTML = d.decks.map(k => `
+      <div class="deck" data-id="${k.id}">
+        <div class="row">
+          <div><div class="name">${esc(k.name)}</div>
+            <div class="meta">${tab === 'me' ? esc(k.format) + (k.commanders.length ? ' · ' + esc(k.commanders.join(' / ')) : '') : esc(k.author)} · ${k.views.toLocaleString()} vistas · ${k.likes} likes${k.bracket ? ' · bracket ' + k.bracket : ''} · ${k.updated}</div></div>
+          <div class="acts"><button data-act="cards">Cartas</button><button data-act="copy">Copiar</button><a href="${esc(k.url)}" target="_blank" rel="noopener">Moxfield ↗</a></div>
+        </div>
+        <div class="list"></div>
+      </div>`).join('');
+  } catch (e) { $('status').textContent = 'Error: ' + e.message; totalPages = 1; }
+  $('prev').disabled = page <= 1; $('next').disabled = page >= totalPages;
+  $('pg').textContent = `${page} / ${totalPages}`;
+}
+
+async function cards(deck) {
+  if (!deck._c) deck._c = await api(`/api/decks/${deck.dataset.id}/cards`);
+  return deck._c;
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return; } catch {}
+  const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+  const ok = document.execCommand('copy'); t.remove(); if (!ok) throw new Error('No se pudo copiar');
+}
+const asText = c => [...c.commanders, ...c.mainboard].map(([q, n]) => `${q} ${n}`).join('\n');
+
+$('decks').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const deck = b.closest('.deck'), list = deck.querySelector('.list'), old = b.textContent;
+  try {
+    if (b.dataset.act === 'cards') {
+      if (list.style.display === 'block') { list.style.display = 'none'; return; }
+      b.textContent = '…'; const c = await cards(deck);
+      list.innerHTML = `<h4>${c.commanders.map(x => esc(x[1])).join(' / ')} · ${c.mainboard.reduce((s, x) => s + x[0], 0) + c.commanders.length} cartas</h4>` +
+        c.mainboard.map(([q, n]) => `${q} ${esc(n)}`).join('\n');
+      list.style.display = 'block';
+    } else {
+      b.textContent = '…'; await copy(asText(await cards(deck))); b.textContent = '¡Copiado!';
+      return setTimeout(() => b.textContent = old, 1500);
+    }
+  } catch (err) { alert('Error: ' + err.message); }
+  b.textContent = old;
+});
+</script>
+</body>
+</html>
